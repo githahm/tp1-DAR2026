@@ -3,41 +3,68 @@ package serverPackage;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Server {
     public static void main(String[] args) {
         try {
-            // 1. Création de la socket d'écoute
-            ServerSocket serverSocket = new ServerSocket(1234);
-            System.out.println("Serveur en attente d'un client...");
+            InetAddress adresseLocale = InetAddress.getLocalHost();
+            int port = 1234;
 
-            // 2. Acceptation du client (bloquant)
+            InetSocketAddress adresseSocket = new InetSocketAddress(adresseLocale, port);
+            ServerSocket serverSocket = new ServerSocket();
+            serverSocket.bind(adresseSocket);
+
+            System.out.println("Serveur en attente sur l'adresse " + adresseLocale.getHostAddress() + ":" + port);
+
             Socket socket = serverSocket.accept();
             System.out.println("Un client est connecté.");
 
-            // 3. Création des flux de traitement pour les entiers
             DataInputStream dis = new DataInputStream(socket.getInputStream());
             DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 
-            int x;
-            // 4. Boucle : on lit tant que le client n'envoie pas 0
-            // dis.readInt() bloque jusqu'à recevoir un entier
-            while ((x = dis.readInt()) != 0) {
-                System.out.println("Nombre reçu du client : " + x);
+            while (true) {
+                int operation = dis.readInt();
 
-                // 5. Traitement : on multiplie par 5
-                int resultat = x * 5;
+                if (operation == 0) {
+                    System.out.println("Le client a quitté.");
+                    break;
+                }
 
-                // 6. Envoi du résultat au client
-                dos.writeInt(resultat);
-                dos.flush(); // Très important pour vider le tampon et envoyer immédiatement
+                int x = dis.readInt();
+                int y = dis.readInt();
+
+                String resultat;
+
+                switch (operation) {
+                    case 1:
+                        resultat = String.valueOf(x + y);
+                        break;
+                    case 2:
+                        resultat = String.valueOf(x - y);
+                        break;
+                    case 3:
+                        resultat = String.valueOf(x * y);
+                        break;
+                    case 4:
+                        if (y == 0) {
+                            resultat = "ERREUR : Division par zéro impossible !";
+                        } else {
+                            resultat = String.valueOf((double) x / y);
+                        }
+                        break;
+                    default:
+                        resultat = "ERREUR : Opération inconnue";
+                }
+
+                dos.writeUTF(resultat);
+                dos.flush();
+                System.out.println("Calcul effectué : " + operation + " sur " + x + " et " + y + " -> " + resultat);
             }
 
-            System.out.println("Le client a envoyé 0. Fermeture de la connexion.");
-
-            // 7. Fermeture propre
             dos.close();
             dis.close();
             socket.close();
